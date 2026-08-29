@@ -24,6 +24,7 @@ services:
     ports:
       - "8000:8000"
     environment:
+      PYTHONDONTWRITEBYTECODE: "1"
       POSTGRES_DB: budgeting
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
