@@ -29,6 +29,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_HOST: db
       POSTGRES_PORT: 5432
+      GDRIVE_CLIENT_ID: ${GDRIVE_CLIENT_ID:-}
+      GDRIVE_CLIENT_SECRET: ${GDRIVE_CLIENT_SECRET:-}
+      GDRIVE_REFRESH_TOKEN: ${GDRIVE_REFRESH_TOKEN:-}
+      GDRIVE_FOLDER_ID: ${GDRIVE_FOLDER_ID:-}
     depends_on:
       db:
         condition: service_healthy

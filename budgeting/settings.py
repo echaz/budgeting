@@ -88,6 +88,13 @@ DATABASES = {
 # Local directory where the rotating database backups are written.
 BACKUP_DIR = Path(os.environ.get('BACKUP_DIR', BASE_DIR / 'backups'))
 
+# Google Drive backup target (personal account). See .env.example and
+# scripts/gdrive_auth.py for how to obtain these.
+GDRIVE_CLIENT_ID = os.environ.get('GDRIVE_CLIENT_ID', '')
+GDRIVE_CLIENT_SECRET = os.environ.get('GDRIVE_CLIENT_SECRET', '')
+GDRIVE_REFRESH_TOKEN = os.environ.get('GDRIVE_REFRESH_TOKEN', '')
+GDRIVE_FOLDER_ID = os.environ.get('GDRIVE_FOLDER_ID', '')
+
 
 # Password validation
 # https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
