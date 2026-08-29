@@ -1,11 +1,11 @@
 {
   "permissions": {
     "allow": [
-      "Bash(python:*)",
-      "Bash(python3:*)",
-      "Bash(python3 -m:*)",
-      "Bash(pip:*)",
-      "Bash(pip3:*)"
+      "Bash(docker compose build:*)",
+      "Bash(docker compose up:*)",
+      "Bash(docker compose restart:*)",
+      "Bash(docker compose exec:*)",
+      "Bash(docker compose run:*)"
     ]
   }
 }
