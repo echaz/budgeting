@@ -5,3 +5,4 @@ google-auth==2.57.0
 google-auth-httplib2==0.4.2
 google-auth-oauthlib==1.4.1
 ipython==9.17.0
+django-extensions==4.1
