@@ -67,8 +67,9 @@ spend both ways.
 ## Migrations
 
 `core/migrations/0001_initial.py` creates all four tables. It was hand-written
-(not generated), so validate with `manage.py makemigrations --check --dry-run`
-before relying on it, then `migrate`.
+(not generated), validated with `manage.py makemigrations --check --dry-run`
+(reports no changes), and has been applied. See `docs/OPERATIONS.md` for how to
+run migrations.
 
 ## Not yet built
 
