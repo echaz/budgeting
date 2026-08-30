@@ -21,3 +21,6 @@ htmlcov/
 
 # Database backup artifacts
 backups/
+
+# Downloaded bank/card statements (personal financial data)
+statements/
