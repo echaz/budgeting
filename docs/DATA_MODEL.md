@@ -20,6 +20,7 @@ A financial account you spend from.
 | `institution` | `CharField(100)` | Free text for now, e.g. "Citi", "Chase". |
 | `account_type` | `CharField(20)` choices | `credit_card`, `savings`, `amazon`. |
 | `nickname` | `CharField(100)` | Display name, e.g. "Citi Double Cash". |
+| `statements_dir` | `CharField(255)` blank | Directory of CSV statements to crawl for this account (relative to project root or absolute). See `docs/IMPORTS.md`. |
 | `is_active` | `BooleanField` | Default `True`; flip off instead of deleting. |
 | `created_at` | `DateTimeField` | `auto_now_add`. |
 
@@ -37,10 +38,12 @@ from so an import can be audited and, if needed, corrected or unwound in bulk.
 | `row_count` | `PositiveIntegerField` | Transactions actually created (dupes skipped are not counted). |
 | `transaction_start_date` | `DateField` null | Earliest transaction date in the file. |
 | `transaction_end_date` | `DateField` null | Latest transaction date in the file. |
+| `completed` | `BooleanField` | Set `True` when the import finishes. A crawl skips any file whose `(account, filename)` already has a completed import. |
 | `created_at` | `DateTimeField` | `auto_now_add`. |
 
 The date range is nullable and filled in after the rows are created (so it can
-be fixed in post). See `docs/IMPORTS.md`.
+be fixed in post). `completed` is the file-level "seen it before" guard — see
+`docs/IMPORTS.md`.
 
 ### Category — dimension 1: *type of purchase*
 What the money was spent on, e.g. groceries, gas, restaurant.
@@ -100,6 +103,10 @@ spend both ways. Both are populated after import, not at ingest time.
 - `core/migrations/0002_transaction_transaction_number_and_more.py` — adds
   `ImportFile`, the `Transaction.import_file` FK and `transaction_number`, and
   makes `category`/`domain` nullable. Generated.
+- `core/migrations/0003_account_statements_dir.py` — adds
+  `Account.statements_dir`. Generated.
+- `core/migrations/0004_importfile_completed.py` — adds `ImportFile.completed`.
+  Generated.
 
 See `docs/OPERATIONS.md` for how to run migrations.
 

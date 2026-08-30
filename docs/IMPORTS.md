@@ -4,6 +4,25 @@ Bank/card statements are imported from CSV into `Transaction` rows. The
 importers live in `scrapers/`. Each imported transaction is locked to an
 `ImportFile` record (see `docs/DATA_MODEL.md`).
 
+## Running
+
+Each `Account` has a `statements_dir` (see `docs/DATA_MODEL.md`). The
+`import_csv` management command crawls it and imports every `.csv` file with the
+chosen parser:
+
+```
+docker compose exec web python manage.py import_csv --account "Citi" --source citi
+```
+
+- `--account` — the `Account` nickname; its `statements_dir` is crawled.
+- `--source` — which parser: `citi`, `santander`, or `chase`.
+
+Each file becomes one `ImportFile`. When an import finishes, that `ImportFile`
+is marked `completed=True`; on a later crawl any file whose `(account,
+filename)` already has a completed import is **skipped** (identity is by
+filename, so a re-downloaded file that keeps its name is treated as already
+seen). Row-level dedup below is the second safety net.
+
 ## Design goals
 
 - **Idempotent.** Running the same file twice must not create duplicate rows.
@@ -79,5 +98,7 @@ pass.
 
 - Because `createTransaction` writes as it goes (so the occurrence count sees
   prior rows), the import is not wrapped in a single transaction. A mid-file
-  crash leaves partial rows — but a re-run cleanly resumes thanks to the dedup.
+  crash leaves partial rows and the `ImportFile` `completed=False`, so the next
+  crawl does not skip it: it re-runs, the dedup skips the rows already inserted,
+  and the file completes.
 - `category` and `domain` are written as `NULL` by every importer.

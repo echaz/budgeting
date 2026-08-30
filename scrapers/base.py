@@ -35,11 +35,13 @@ class BaseCsvImporter:
         import_file.row_count = len(created)
         import_file.transaction_start_date = min(dates) if dates else None
         import_file.transaction_end_date = max(dates) if dates else None
+        import_file.completed = True
         import_file.save(
             update_fields=[
                 "row_count",
                 "transaction_start_date",
                 "transaction_end_date",
+                "completed",
             ]
         )
 
