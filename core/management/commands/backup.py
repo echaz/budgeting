@@ -17,6 +17,13 @@ FILE2_NAME = "backup_file2.sql.gz"
 class Command(BaseCommand):
     help = "Dump the Postgres database and rotate it through a two-slot backup buffer."
 
+    def add_arguments(self, parser):
+        parser.add_argument(
+            "--force",
+            action="store_true",
+            help="Skip the check that the new backup is larger than the previous one.",
+        )
+
     def handle(self, *args, **options):
         self._check_database_healthy()
 
@@ -27,9 +34,11 @@ class Command(BaseCommand):
         file2 = backup_dir / FILE2_NAME
 
         tmp_path = self._dump_and_gzip(backup_dir)
-        self._verify_gzip(tmp_path)
+        new_uncompressed = self._verify_gzip(tmp_path)
 
         if file1.exists():
+            if not options["force"]:
+                self._check_growth(file1, tmp_path, new_uncompressed)
             os.replace(file1, file2)
         os.replace(tmp_path, file1)
 
@@ -93,9 +102,34 @@ class Command(BaseCommand):
             path.unlink(missing_ok=True)
             raise CommandError("Dump produced an empty file, aborting.")
         try:
-            with gzip.open(path, "rb") as gz:
-                while gz.read(1024 * 1024):
-                    pass
+            return self._uncompressed_size(path)
         except OSError as exc:
             path.unlink(missing_ok=True)
             raise CommandError(f"Dump failed gzip integrity check, aborting: {exc}")
+
+    def _uncompressed_size(self, path):
+        total = 0
+        with gzip.open(path, "rb") as gz:
+            while True:
+                chunk = gz.read(1024 * 1024)
+                if not chunk:
+                    break
+                total += len(chunk)
+        return total
+
+    def _check_growth(self, previous, tmp_path, new_uncompressed):
+        try:
+            old_uncompressed = self._uncompressed_size(previous)
+        except OSError:
+            self.stdout.write(self.style.WARNING(
+                f"Could not read previous backup {previous} to compare sizes; "
+                "skipping growth check."
+            ))
+            return
+        if new_uncompressed <= old_uncompressed:
+            tmp_path.unlink(missing_ok=True)
+            raise CommandError(
+                f"New backup ({new_uncompressed} bytes uncompressed) is not larger than "
+                f"the previous backup ({old_uncompressed} bytes uncompressed); backups are "
+                "expected to grow each run. Aborting without rotating."
+            )
