@@ -57,6 +57,12 @@ docker compose run --rm web python manage.py <command>
 docker compose run --rm web python manage.py migrate
 ```
 
+## Imports
+
+Bank/card statements are imported from CSV via the importers in `scrapers/`. See
+`docs/IMPORTS.md` for the per-source parsers and the idempotency (re-run safety)
+strategy.
+
 ## Users & authentication
 
 Auth uses Django's built-in `User` model and standard auth views (no custom
@@ -103,6 +109,27 @@ docker compose run --rm web python manage.py backup --force
   first backup (no previous file) and when the previous file is unreadable.
 - `--force` skips only the growth guard; the DB health, empty-file, and gzip
   checks still run.
+
+### Host-side dump without Django — `scripts/backup_host.py`
+
+For dumping from the **host** without booting Django (the host virtualenv does
+not carry `django_extensions`, so `manage.py` can't import settings there). Pure
+stdlib; reproduces the same rotation, gzip integrity, and growth checks as the
+`backup` command.
+
+```
+python scripts/backup_host.py [--force]            # host-native pg_dump over TCP
+python scripts/backup_host.py --via-docker         # source the dump via the db container
+```
+
+- Connection settings come from the environment (loaded from `.env` when
+  present): `POSTGRES_DB`, `POSTGRES_USER`, `PS_PASSWORD`, `POSTGRES_HOST`,
+  `POSTGRES_PORT`, `BACKUP_DIR`. Host defaults point at `localhost:5433` (the
+  published `db` port).
+- `--via-docker` runs `pg_dump` inside the `db` container (unix-socket trust, no
+  password) instead of connecting to the published port. Use it when something
+  else already holds the host port (e.g. an SSH tunnel bound to `5433`), which
+  makes a host-native TCP connection fail or hit the wrong server.
 
 ### Offsite push — `backup_push`
 
