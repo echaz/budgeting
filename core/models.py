@@ -94,3 +94,17 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.date} {self.description} {self.amount}"
+
+
+class CategoryRule(models.Model):
+    pattern = models.CharField(max_length=255, unique=True)
+    category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="rules")
+    priority = models.IntegerField(default=100)
+    is_active = models.BooleanField(default=True)
+    note = models.CharField(max_length=255, blank=True)
+
+    class Meta:
+        ordering = ["priority", "id"]
+
+    def __str__(self):
+        return f"[{self.priority}] {self.pattern} -> {self.category.name}"

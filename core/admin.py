@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from core.models import Account, Category, Domain, Transaction
+from core.models import Account, Category, CategoryRule, Domain, Transaction
 
 
 @admin.register(Account)
@@ -20,6 +20,14 @@ class CategoryAdmin(admin.ModelAdmin):
 class DomainAdmin(admin.ModelAdmin):
     list_display = ("name",)
     search_fields = ("name",)
+
+
+@admin.register(CategoryRule)
+class CategoryRuleAdmin(admin.ModelAdmin):
+    list_display = ("priority", "pattern", "category", "is_active")
+    list_filter = ("is_active", "category")
+    search_fields = ("pattern", "note")
+    ordering = ("priority", "id")
 
 
 @admin.register(Transaction)
