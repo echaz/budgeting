@@ -24,3 +24,8 @@ backups/
 
 # Downloaded bank/card statements (personal financial data)
 statements/
+
+# Eclipse / PyDev IDE files
+.project
+.pydevproject
+.settings/

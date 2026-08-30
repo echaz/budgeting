@@ -41,15 +41,46 @@ class Domain(models.Model):
         return self.name
 
 
+class ImportFile(models.Model):
+    account = models.ForeignKey(
+        Account, on_delete=models.PROTECT, related_name="import_files"
+    )
+    filename = models.CharField(max_length=255)
+    row_count = models.PositiveIntegerField(default=0)
+    transaction_start_date = models.DateField(null=True, blank=True)
+    transaction_end_date = models.DateField(null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.filename} ({self.row_count} rows)"
+
+
 class Transaction(models.Model):
     account = models.ForeignKey(
         Account, on_delete=models.PROTECT, related_name="transactions"
     )
     category = models.ForeignKey(
-        Category, on_delete=models.PROTECT, related_name="transactions"
+        Category,
+        on_delete=models.PROTECT,
+        related_name="transactions",
+        null=True,
+        blank=True,
     )
     domain = models.ForeignKey(
-        Domain, on_delete=models.PROTECT, related_name="transactions"
+        Domain,
+        on_delete=models.PROTECT,
+        related_name="transactions",
+        null=True,
+        blank=True,
+    )
+    import_file = models.ForeignKey(
+        ImportFile, on_delete=models.PROTECT, related_name="transactions"
+    )
+    transaction_number = models.CharField(
+        max_length=100, unique=True, null=True, blank=True
     )
     date = models.DateField()
     amount = models.DecimalField(max_digits=10, decimal_places=2)
