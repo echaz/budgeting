@@ -1,3 +1,5 @@
+import re
+
 from django.db import models
 
 
@@ -23,6 +25,7 @@ class Account(models.Model):
 
 class Category(models.Model):
     name = models.CharField(max_length=100, unique=True)
+    exclude_from_reports = models.BooleanField(default=False)
 
     class Meta:
         ordering = ["name"]
@@ -97,8 +100,10 @@ class Transaction(models.Model):
 
 
 class CategoryRule(models.Model):
-    pattern = models.CharField(max_length=255, unique=True)
+    pattern = models.CharField(max_length=255)
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="rules")
+    min_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    max_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     priority = models.IntegerField(default=100)
     is_active = models.BooleanField(default=True)
     note = models.CharField(max_length=255, blank=True)
@@ -107,4 +112,18 @@ class CategoryRule(models.Model):
         ordering = ["priority", "id"]
 
     def __str__(self):
-        return f"[{self.priority}] {self.pattern} -> {self.category.name}"
+        bounds = ""
+        if self.min_amount is not None:
+            bounds += f" >={self.min_amount}"
+        if self.max_amount is not None:
+            bounds += f" <{self.max_amount}"
+        return f"[{self.priority}] {self.pattern}{bounds} -> {self.category.name}"
+
+    def matches(self, description, amount):
+        if not re.search(self.pattern, description, re.IGNORECASE):
+            return False
+        if self.min_amount is not None and amount < self.min_amount:
+            return False
+        if self.max_amount is not None and amount >= self.max_amount:
+            return False
+        return True

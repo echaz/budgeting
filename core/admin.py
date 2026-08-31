@@ -12,7 +12,8 @@ class AccountAdmin(admin.ModelAdmin):
 
 @admin.register(Category)
 class CategoryAdmin(admin.ModelAdmin):
-    list_display = ("name",)
+    list_display = ("name", "exclude_from_reports")
+    list_filter = ("exclude_from_reports",)
     search_fields = ("name",)
 
 
@@ -24,7 +25,7 @@ class DomainAdmin(admin.ModelAdmin):
 
 @admin.register(CategoryRule)
 class CategoryRuleAdmin(admin.ModelAdmin):
-    list_display = ("priority", "pattern", "category", "is_active")
+    list_display = ("priority", "pattern", "min_amount", "max_amount", "category", "is_active")
     list_filter = ("is_active", "category")
     search_fields = ("pattern", "note")
     ordering = ("priority", "id")

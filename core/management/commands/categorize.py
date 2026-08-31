@@ -29,7 +29,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-        rules = self._compile_rules()
+        rules = self._load_rules()
         if not rules:
             raise CommandError("No active CategoryRules. Seed some first (see seed_category_rules).")
 
@@ -40,9 +40,9 @@ class Command(BaseCommand):
         updates = []
         matched = 0
         considered = 0
-        for tx in queryset.only("id", "description", "category").iterator():
+        for tx in queryset.only("id", "description", "amount", "category").iterator():
             considered += 1
-            category = self._first_match(rules, tx.description)
+            category = self._first_match(rules, tx.description, tx.amount)
             if category is None:
                 continue
             if tx.category_id != category.id:
@@ -60,20 +60,19 @@ class Command(BaseCommand):
         ))
         self._report_unmatched(options["show_unmatched"])
 
-    def _compile_rules(self):
-        compiled = []
-        for rule in CategoryRule.objects.filter(is_active=True).select_related("category"):
+    def _load_rules(self):
+        rules = list(CategoryRule.objects.filter(is_active=True).select_related("category"))
+        for rule in rules:
             try:
-                regex = re.compile(rule.pattern, re.IGNORECASE)
+                re.compile(rule.pattern)
             except re.error as exc:
                 raise CommandError(f"Bad regex in rule {rule.id} ({rule.pattern!r}): {exc}")
-            compiled.append((regex, rule.category))
-        return compiled
+        return rules
 
-    def _first_match(self, rules, description):
-        for regex, category in rules:
-            if regex.search(description):
-                return category
+    def _first_match(self, rules, description, amount):
+        for rule in rules:
+            if rule.matches(description, amount):
+                return rule.category
         return None
 
     def _report_unmatched(self, limit):
