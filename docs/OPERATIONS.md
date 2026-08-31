@@ -39,7 +39,7 @@ docker compose down -v && docker compose up -d db
 ## Running
 
 ```
-docker compose up -d              # start db + web (http://localhost:8000)
+docker compose up -d              # start db + web (http://localhost:8010)
 docker compose logs -f web        # tail logs
 docker compose down               # stop (keeps data); add -v to wipe the DB
 ```
@@ -124,11 +124,11 @@ python scripts/backup_host.py --via-docker         # source the dump via the db 
 
 - Connection settings come from the environment (loaded from `.env` when
   present): `POSTGRES_DB`, `POSTGRES_USER`, `PS_PASSWORD`, `POSTGRES_HOST`,
-  `POSTGRES_PORT`, `BACKUP_DIR`. Host defaults point at `localhost:5433` (the
+  `POSTGRES_PORT`, `BACKUP_DIR`. Host defaults point at `localhost:5434` (the
   published `db` port).
 - `--via-docker` runs `pg_dump` inside the `db` container (unix-socket trust, no
   password) instead of connecting to the published port. Use it when something
-  else already holds the host port (e.g. an SSH tunnel bound to `5433`), which
+  else already holds the host port (e.g. an SSH tunnel bound to `5434`), which
   makes a host-native TCP connection fail or hit the wrong server.
 
 ### Offsite push — `backup_push`

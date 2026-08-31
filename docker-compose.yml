@@ -6,7 +6,7 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${PS_PASSWORD:-postgres}
     ports:
-      - "5433:5432"
+      - "5434:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -23,7 +23,7 @@ services:
       - ./backups:/app/backups
       - ${HOME}/.ipython:/root/.ipython
     ports:
-      - "8000:8000"
+      - "8010:8000"
     environment:
       PYTHONDONTWRITEBYTECODE: "1"
       POSTGRES_DB: budgeting

@@ -5,13 +5,13 @@ cannot import settings here. This script talks to Postgres directly with
 pg_dump and reproduces the two-slot rotation, gzip integrity check and growth
 check of core/management/commands/backup.py.
 
-Run it on the docker host (the db service is published on localhost:5433):
+Run it on the docker host (the db service is published on localhost:5434):
 
     python scripts/backup_host.py [--force]
 
 Connection settings come from the environment (loaded from .env when present):
 POSTGRES_DB, POSTGRES_USER, PS_PASSWORD, POSTGRES_HOST, POSTGRES_PORT,
-BACKUP_DIR. Host defaults point at localhost:5433.
+BACKUP_DIR. Host defaults point at localhost:5434.
 """
 import argparse
 import gzip
@@ -49,7 +49,7 @@ def db_config():
         "USER": os.environ.get("POSTGRES_USER", "postgres"),
         "PASSWORD": os.environ.get("PS_PASSWORD", "postgres"),
         "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
-        "PORT": os.environ.get("POSTGRES_PORT", "5433"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5434"),
     }
 
 
