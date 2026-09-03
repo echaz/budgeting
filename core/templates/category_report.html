@@ -21,6 +21,13 @@
         .empty { color: #888; }
         .swatch { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 2px;
                   margin-right: 0.5rem; vertical-align: middle; }
+        #legend-table tr[data-category] { cursor: pointer; }
+        #legend-table tr[data-category]:hover { background: #f5f7fa; }
+        #legend-table tr.selected { background: #eef2ff; }
+        #details { flex: 1; min-width: 320px; }
+        #details h2 { font-size: 1.1rem; margin-bottom: 0.5rem; }
+        #details table { width: 100%; }
+        #details .hint { color: #888; }
     </style>
 </head>
 <body>
@@ -70,10 +77,15 @@
             <canvas id="pie"></canvas>
         </div>
         <table id="legend-table"></table>
+        <div id="details">
+            <p class="hint">Click a category to see its transactions.</p>
+        </div>
     </div>
 
+    {{ transactions_json|json_script:"tx-data" }}
     <script>
         const data = JSON.parse(document.getElementById("chart-data").textContent);
+        const txByCategory = JSON.parse(document.getElementById("tx-data").textContent);
         const palette = [
             "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
             "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac",
@@ -86,15 +98,45 @@
 
         const fmt = v => "$" + v.toLocaleString(undefined,
             { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({
+            "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
+        }[c]));
+
+        function showTransactions(index) {
+            const category = data[index].category;
+            const txns = txByCategory[category] || [];
+            document.querySelectorAll("#legend-table tr[data-idx]").forEach(tr => {
+                tr.classList.toggle("selected", Number(tr.dataset.idx) === index);
+            });
+            const details = document.getElementById("details");
+            let html = `<h2>${escapeHtml(category)} &mdash; ${fmt(data[index].amount)}`
+                     + ` (${txns.length} transaction${txns.length === 1 ? "" : "s"})</h2>`;
+            html += '<table><tr><th>Date</th><th>Description</th><th>Account</th>'
+                  + '<th class="amount">Amount</th></tr>';
+            for (const t of txns) {
+                html += `<tr>
+                    <td>${escapeHtml(t.date)}</td>
+                    <td>${escapeHtml(t.description)}</td>
+                    <td>${escapeHtml(t.account)}</td>
+                    <td class="amount">${fmt(t.amount)}</td>
+                </tr>`;
+            }
+            html += "</table>";
+            details.innerHTML = html;
+        }
 
         if (data.length === 0) {
             document.querySelector(".layout").innerHTML =
                 '<p class="empty">No categorized spending for this period.</p>';
+            document.getElementById("details").innerHTML = "";
         } else {
             new Chart(document.getElementById("pie"), {
                 type: "pie",
                 data: { labels, datasets: [{ data: amounts, backgroundColor: colors }] },
                 options: {
+                    onClick: (evt, elements) => {
+                        if (elements.length) showTransactions(elements[0].index);
+                    },
                     plugins: {
                         legend: { display: false },
                         tooltip: {
@@ -114,8 +156,8 @@
                      + '<th class="amount">%</th></tr>';
             data.forEach((d, i) => {
                 const pct = total ? (d.amount / total * 100).toFixed(1) : 0;
-                html += `<tr>
-                    <td><span class="swatch" style="background:${colors[i]}"></span>${d.category}</td>
+                html += `<tr data-idx="${i}" data-category>
+                    <td><span class="swatch" style="background:${colors[i]}"></span>${escapeHtml(d.category)}</td>
                     <td class="amount">${fmt(d.amount)}</td>
                     <td class="amount">${pct}%</td>
                 </tr>`;
@@ -123,6 +165,10 @@
             html += `<tr class="total"><td>Total</td>
                      <td class="amount">${fmt(total)}</td><td class="amount">100%</td></tr>`;
             table.innerHTML = html;
+
+            table.querySelectorAll("tr[data-idx]").forEach(tr => {
+                tr.addEventListener("click", () => showTransactions(Number(tr.dataset.idx)));
+            });
         }
     </script>
 </body>

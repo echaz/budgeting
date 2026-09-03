@@ -103,9 +103,9 @@ def reports_index(request):
             "description": "Pie chart of spending by category, by month, quarter, or last 12 months.",
         },
         {
-            "name": "Compare months",
+            "name": "Compare periods",
             "url": reverse("category_compare"),
-            "description": "Side-by-side spending by category for any two months or quarters.",
+            "description": "Side-by-side spending by category for any two months, quarters, or years.",
         },
     ]
     return render(request, "reports_index.html", {"reports": reports})
@@ -154,6 +154,18 @@ def category_report(request):
     ]
     total = sum(item["amount"] for item in chart)
 
+    transactions = {}
+    tx_rows = qs.order_by("-date", "-created_at").values(
+        "category__name", "date", "description", "amount", "account__nickname"
+    )
+    for tx in tx_rows:
+        transactions.setdefault(tx["category__name"], []).append({
+            "date": tx["date"].strftime("%Y-%m-%d"),
+            "description": tx["description"],
+            "amount": float(tx["amount"]),
+            "account": tx["account__nickname"],
+        })
+
     context = {
         "option_sets_json": option_sets,
         "period_options": options,
@@ -161,6 +173,7 @@ def category_report(request):
         "selected_period": period,
         "period_label": label,
         "chart_json": chart,
+        "transactions_json": transactions,
         "total": total,
     }
     return render(request, "category_report.html", context)
