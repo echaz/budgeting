@@ -1,0 +1,129 @@
+{% load humanize %}
+{{ chart_json|json_script:"chart-data" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Category spending</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 2rem; color: #1a1a1a; }
+        h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+        .controls { margin: 1rem 0 1.5rem; }
+        select { font-size: 1rem; padding: 0.35rem 0.5rem; }
+        .layout { display: flex; flex-wrap: wrap; gap: 2.5rem; align-items: flex-start; }
+        .chart-wrap { width: 420px; max-width: 90vw; }
+        table { border-collapse: collapse; min-width: 280px; }
+        th, td { text-align: left; padding: 0.35rem 0.75rem; border-bottom: 1px solid #eee; }
+        td.amount, th.amount { text-align: right; font-variant-numeric: tabular-nums; }
+        .total { font-weight: 600; }
+        .empty { color: #888; }
+        .swatch { display: inline-block; width: 0.8rem; height: 0.8rem; border-radius: 2px;
+                  margin-right: 0.5rem; vertical-align: middle; }
+    </style>
+</head>
+<body>
+    <h1>Category spending</h1>
+    <p>{{ period_label }} &mdash; total ${{ total|floatformat:2|intcomma }}</p>
+
+    {{ option_sets_json|json_script:"option-sets" }}
+    <form method="get" class="controls">
+        <label for="granularity">View by:</label>
+        <select name="granularity" id="granularity">
+            <option value="month" {% if granularity == "month" %}selected{% endif %}>Month</option>
+            <option value="quarter" {% if granularity == "quarter" %}selected{% endif %}>Quarter</option>
+            <option value="year" {% if granularity == "year" %}selected{% endif %}>Year</option>
+        </select>
+        <label for="period">Period:</label>
+        <select name="period" id="period" onchange="this.form.submit()">
+            {% for opt in period_options %}
+                <option value="{{ opt.value }}"
+                    {% if selected_period == opt.value %}selected{% endif %}>
+                    {{ opt.label }}
+                </option>
+            {% endfor %}
+        </select>
+        <noscript><button type="submit">Go</button></noscript>
+    </form>
+    <script>
+        (function () {
+            const optionSets = JSON.parse(document.getElementById("option-sets").textContent);
+            const granSelect = document.getElementById("granularity");
+            const periodSelect = document.getElementById("period");
+            granSelect.addEventListener("change", function () {
+                const opts = optionSets[granSelect.value] || [];
+                periodSelect.innerHTML = "";
+                for (const opt of opts) {
+                    const el = document.createElement("option");
+                    el.value = opt.value;
+                    el.textContent = opt.label;
+                    periodSelect.appendChild(el);
+                }
+                granSelect.form.submit();
+            });
+        })();
+    </script>
+
+    <div class="layout">
+        <div class="chart-wrap">
+            <canvas id="pie"></canvas>
+        </div>
+        <table id="legend-table"></table>
+    </div>
+
+    <script>
+        const data = JSON.parse(document.getElementById("chart-data").textContent);
+        const palette = [
+            "#4e79a7", "#f28e2b", "#e15759", "#76b7b2", "#59a14f",
+            "#edc948", "#b07aa1", "#ff9da7", "#9c755f", "#bab0ac",
+            "#86bcb6", "#d37295", "#a0cbe8", "#ffbe7d", "#8cd17d"
+        ];
+        const labels = data.map(d => d.category);
+        const amounts = data.map(d => d.amount);
+        const colors = labels.map((_, i) => palette[i % palette.length]);
+        const total = amounts.reduce((a, b) => a + b, 0);
+
+        const fmt = v => "$" + v.toLocaleString(undefined,
+            { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+        if (data.length === 0) {
+            document.querySelector(".layout").innerHTML =
+                '<p class="empty">No categorized spending for this period.</p>';
+        } else {
+            new Chart(document.getElementById("pie"), {
+                type: "pie",
+                data: { labels, datasets: [{ data: amounts, backgroundColor: colors }] },
+                options: {
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => {
+                                    const pct = total ? (ctx.parsed / total * 100).toFixed(1) : 0;
+                                    return ` ${ctx.label}: ${fmt(ctx.parsed)} (${pct}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            const table = document.getElementById("legend-table");
+            let html = '<tr><th>Category</th><th class="amount">Amount</th>'
+                     + '<th class="amount">%</th></tr>';
+            data.forEach((d, i) => {
+                const pct = total ? (d.amount / total * 100).toFixed(1) : 0;
+                html += `<tr>
+                    <td><span class="swatch" style="background:${colors[i]}"></span>${d.category}</td>
+                    <td class="amount">${fmt(d.amount)}</td>
+                    <td class="amount">${pct}%</td>
+                </tr>`;
+            });
+            html += `<tr class="total"><td>Total</td>
+                     <td class="amount">${fmt(total)}</td><td class="amount">100%</td></tr>`;
+            table.innerHTML = html;
+        }
+    </script>
+</body>
+</html>

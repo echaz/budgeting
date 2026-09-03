@@ -1,0 +1,158 @@
+{% load humanize %}
+{{ chart_json|json_script:"chart-data" }}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Compare months</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        body { font-family: system-ui, sans-serif; margin: 2rem; color: #1a1a1a; }
+        h1 { font-size: 1.5rem; margin-bottom: 0.25rem; }
+        .controls { margin: 1rem 0 1.5rem; display: flex; gap: 1.5rem; align-items: flex-end;
+                    flex-wrap: wrap; }
+        .controls label { display: block; font-size: 0.85rem; color: #555; margin-bottom: 0.2rem; }
+        select { font-size: 1rem; padding: 0.35rem 0.5rem; }
+        .totals { margin: 0 0 1.5rem; color: #444; }
+        .chart-wrap { width: 100%; max-width: 900px; }
+        table { border-collapse: collapse; width: 100%; max-width: 900px; margin-top: 2rem; }
+        th, td { text-align: left; padding: 0.35rem 0.75rem; border-bottom: 1px solid #eee; }
+        td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+        .total { font-weight: 600; }
+        .up { color: #c0392b; }
+        .down { color: #27ae60; }
+        .empty { color: #888; }
+    </style>
+</head>
+<body>
+    <h1>Compare periods</h1>
+
+    {{ option_sets_json|json_script:"option-sets" }}
+    <form method="get" class="controls">
+        <div>
+            <label for="ga">A &mdash; view by</label>
+            <select name="ga" id="ga">
+                <option value="month" {% if gran_a == "month" %}selected{% endif %}>Month</option>
+                <option value="quarter" {% if gran_a == "quarter" %}selected{% endif %}>Quarter</option>
+                <option value="year" {% if gran_a == "year" %}selected{% endif %}>Year</option>
+            </select>
+        </div>
+        <div>
+            <label for="a">A &mdash; period</label>
+            <select name="a" id="a" onchange="this.form.submit()">
+                {% for opt in options_a %}
+                    <option value="{{ opt.value }}"
+                        {% if period_a == opt.value %}selected{% endif %}>{{ opt.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="gb">B &mdash; view by</label>
+            <select name="gb" id="gb">
+                <option value="month" {% if gran_b == "month" %}selected{% endif %}>Month</option>
+                <option value="quarter" {% if gran_b == "quarter" %}selected{% endif %}>Quarter</option>
+                <option value="year" {% if gran_b == "year" %}selected{% endif %}>Year</option>
+            </select>
+        </div>
+        <div>
+            <label for="b">B &mdash; period</label>
+            <select name="b" id="b" onchange="this.form.submit()">
+                {% for opt in options_b %}
+                    <option value="{{ opt.value }}"
+                        {% if period_b == opt.value %}selected{% endif %}>{{ opt.label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <noscript><button type="submit">Go</button></noscript>
+    </form>
+    <script>
+        (function () {
+            const optionSets = JSON.parse(document.getElementById("option-sets").textContent);
+            function link(granId, periodId) {
+                const gran = document.getElementById(granId);
+                const period = document.getElementById(periodId);
+                gran.addEventListener("change", function () {
+                    const opts = optionSets[gran.value] || [];
+                    period.innerHTML = "";
+                    for (const opt of opts) {
+                        const el = document.createElement("option");
+                        el.value = opt.value;
+                        el.textContent = opt.label;
+                        period.appendChild(el);
+                    }
+                    gran.form.submit();
+                });
+            }
+            link("ga", "a");
+            link("gb", "b");
+        })();
+    </script>
+
+    <p class="totals">
+        <strong>{{ label_a }}</strong>: ${{ total_a|floatformat:2|intcomma }} &nbsp;&mdash;&nbsp;
+        <strong>{{ label_b }}</strong>: ${{ total_b|floatformat:2|intcomma }}
+    </p>
+
+    <div class="chart-wrap"><canvas id="bar"></canvas></div>
+    <table id="cmp-table"></table>
+
+    <script>
+        const rows = JSON.parse(document.getElementById("chart-data").textContent);
+        const labelA = "{{ label_a|escapejs }}";
+        const labelB = "{{ label_b|escapejs }}";
+
+        const fmt = v => "$" + v.toLocaleString(undefined,
+            { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const signed = v => (v >= 0 ? "+" : "−") + fmt(Math.abs(v));
+
+        if (rows.length === 0) {
+            document.querySelector(".chart-wrap").innerHTML =
+                '<p class="empty">No categorized spending for these months.</p>';
+        } else {
+            new Chart(document.getElementById("bar"), {
+                type: "bar",
+                data: {
+                    labels: rows.map(r => r.category),
+                    datasets: [
+                        { label: labelA, data: rows.map(r => r.amount_a),
+                          backgroundColor: "#4e79a7" },
+                        { label: labelB, data: rows.map(r => r.amount_b),
+                          backgroundColor: "#f28e2b" }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    scales: { y: { beginAtZero: true, ticks: { callback: v => "$" + v } } },
+                    plugins: {
+                        tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` } }
+                    }
+                }
+            });
+
+            const table = document.getElementById("cmp-table");
+            let html = `<tr><th>Category</th><th class="num">${labelA}</th>`
+                     + `<th class="num">${labelB}</th><th class="num">Change</th></tr>`;
+            let ta = 0, tb = 0;
+            rows.forEach(r => {
+                ta += r.amount_a; tb += r.amount_b;
+                const cls = r.delta > 0 ? "up" : (r.delta < 0 ? "down" : "");
+                html += `<tr>
+                    <td>${r.category}</td>
+                    <td class="num">${fmt(r.amount_a)}</td>
+                    <td class="num">${fmt(r.amount_b)}</td>
+                    <td class="num ${cls}">${signed(r.delta)}</td>
+                </tr>`;
+            });
+            const dcls = (tb - ta) > 0 ? "up" : ((tb - ta) < 0 ? "down" : "");
+            html += `<tr class="total">
+                <td>Total</td>
+                <td class="num">${fmt(ta)}</td>
+                <td class="num">${fmt(tb)}</td>
+                <td class="num ${dcls}">${signed(tb - ta)}</td>
+            </tr>`;
+            table.innerHTML = html;
+        }
+    </script>
+</body>
+</html>
